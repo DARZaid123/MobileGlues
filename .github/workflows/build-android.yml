@@ -20,12 +20,12 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive
 
-      - name: Set up Android SDK and NDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android build tools
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "ndk;27.2.12479018" "cmake;3.22.1"
+          sdkmanager --install "platform-tools" "platforms;android-35" "ndk;27.2.12479018" "cmake;3.22.1"
 
       - name: Build MobileGlues for arm64-v8a
         run: |
