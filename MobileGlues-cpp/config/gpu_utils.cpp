@@ -210,7 +210,7 @@ int hasVulkan12() {
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "MobileGlues";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_3;
+    // Request only Vulkan 1.0 at instance creation time. We only need to inspect\n    // VkPhysicalDeviceProperties below, and requiring 1.3 here can make vkCreateInstance\n    // fail on devices that support Vulkan 1.2 but not Vulkan 1.3.\n    appInfo.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

@@ -1,0 +1,84 @@
+name: Build MobileGlues for Android
+
+on:
+  push:
+    branches:
+      - mali-g68-safe-tuning
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Initialize required submodules
+        run: |
+          git submodule update --init --recursive --jobs 4 || true
+          git clone --depth 1 https://github.com/KhronosGroup/glslang.git MobileGlues-cpp/3rdparty/glslang
+          git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git MobileGlues-cpp/3rdparty/SPIRV-Cross
+          git clone --depth 1 https://github.com/MobileGL-Dev/flat_hash_map.git MobileGlues-cpp/include/ska
+          test -f MobileGlues-cpp/3rdparty/glslang/CMakeLists.txt
+          test -f MobileGlues-cpp/3rdparty/SPIRV-Cross/CMakeLists.txt
+
+      - name: Locate Android SDK tools
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME" -type f -name sdkmanager | head -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager was not found in $ANDROID_HOME"
+            exit 1
+          fi
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+
+      - name: Install Android SDK packages
+        run: |
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install             "platform-tools"             "platforms;android-35"             "ndk;27.2.12479018"             "cmake;3.22.1"
+
+      - name: Set Android NDK path
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - name: Build MobileGlues for arm64-v8a
+        run: |
+          export CMAKE_BIN="$ANDROID_HOME/cmake/3.22.1/bin/cmake"
+          "$CMAKE_BIN" --version
+          cd MobileGlues-cpp
+          "$CMAKE_BIN" -B build-android             -DCMAKE_BUILD_TYPE=RelWithDebInfo             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-24             -DANDROID_STL=c++_static             -DCMAKE_ANDROID_NDK="$ANDROID_NDK_HOME"
+          "$CMAKE_BIN" --build build-android --config RelWithDebInfo --target mobileglues --parallel 2
+
+      - name: Build Zalith Launcher renderer plugin APK
+        run: |
+          git clone --depth 1 https://github.com/ShirosakiMio/FCLRendererPlugin.git zalith-renderer-plugin
+          mkdir -p zalith-renderer-plugin/app/src/main/jniLibs/arm64-v8a
+          cp MobileGlues-cpp/build-android/libmobileglues.so zalith-renderer-plugin/app/src/main/jniLibs/arm64-v8a/libmobileglues.so
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("zalith-renderer-plugin/app/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace('applicationId = "com.mio.plugin.renderer"', 'applicationId = "com.mio.plugin.mobileglues"')
+          s = s.replace('resValue("string","app_name","XXX Renderer")', 'resValue("string","app_name","MobileGlues Mali-G68")')
+          s = s.replace('applicationIdSuffix = ".xxx"', 'applicationIdSuffix = ".mali_g68"')
+          s = s.replace('manifestPlaceholders["des"] = ""', 'manifestPlaceholders["des"] = "Custom MobileGlues build for Mali-G68"')
+          s = s.replace('manifestPlaceholders["renderer"] = ""', 'manifestPlaceholders["renderer"] = "MobileGlues:libmobileglues.so:libmobileglues.so"')
+          p.write_text(s)
+          PY
+          cd zalith-renderer-plugin
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../MobileGlues-cpp/build-android/MobileGlues-Zalith-Mali-G68.apk
+
+      - name: Upload Android library
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobileGlues-Android-arm64-v8a
+          path: MobileGlues-cpp/build-android/libmobileglues.so
+
+      - name: Upload Zalith renderer plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobileGlues-Zalith-Mali-G68
+          path: MobileGlues-cpp/build-android/MobileGlues-Zalith-Mali-G68.apk

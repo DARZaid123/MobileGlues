@@ -1,24 +1,27 @@
 name: Build MobileGlues for iOS
-on: [push, workflow_dispatch]
+
+on:
+  workflow_dispatch:
+
 jobs:
   build-ios:
     runs-on: macos-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Ensure submodules are initialized
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
 
       - name: Build MobileGlues
         run: |
           cd MobileGlues-cpp
           wget https://github.com/leetal/ios-cmake/raw/master/ios.toolchain.cmake
-          cmake -B build \
-            -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
-            -DSTATICLIB=OFF \
-            -DMACOS=ON \
-            -DPLATFORM=OS64 \
-            -DCMAKE_C_FLAGS=-Wno-error=implicit-function-declaration
+          cmake -B build             -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake             -DSTATICLIB=OFF             -DMACOS=ON             -DPLATFORM=OS64             -DCMAKE_C_FLAGS=-Wno-error=implicit-function-declaration
           cmake --build build --config RelWithDebInfo --target mobileglues
           codesign -s - build/libmobileglues.dylib
 
