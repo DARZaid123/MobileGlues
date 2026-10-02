@@ -9,6 +9,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Ensure submodules are initialized
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
       - name: Build MobileGlues
         run: |
           cd MobileGlues-cpp
