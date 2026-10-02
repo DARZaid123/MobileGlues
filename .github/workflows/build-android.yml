@@ -1,0 +1,40 @@
+name: Build MobileGlues for Android
+
+on:
+  push:
+    branches:
+      - mali-g68-safe-tuning
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Ensure submodules are initialized
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Build MobileGlues for arm64-v8a
+        run: |
+          cd MobileGlues-cpp
+          cmake -B build-android             -DCMAKE_BUILD_TYPE=RelWithDebInfo             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-24             -DANDROID_STL=c++_static             -DCMAKE_ANDROID_NDK="$ANDROID_NDK_HOME"
+          cmake --build build-android --config RelWithDebInfo --target mobileglues --parallel 2
+
+      - name: Upload Android library
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobileGlues-Android-arm64-v8a
+          path: MobileGlues-cpp/build-android/libmobileglues.so
