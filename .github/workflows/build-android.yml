@@ -17,8 +17,6 @@ jobs:
 
       - name: Ensure submodules are initialized
         run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync
           git submodule update --init --recursive --jobs 4
           test -f MobileGlues-cpp/3rdparty/glslang/CMakeLists.txt
           test -f MobileGlues-cpp/3rdparty/SPIRV-Cross/CMakeLists.txt
