@@ -17,11 +17,11 @@ jobs:
 
       - name: Initialize required submodules
         run: |
-          git submodule status || true
-          git -c protocol.version=2 submodule update --init --recursive --jobs 4
-          for d in MobileGlues-cpp/3rdparty/glslang MobileGlues-cpp/3rdparty/SPIRV-Cross; do
-            test -f "$d/CMakeLists.txt" || { echo "Missing $d"; exit 1; }
-          done
+          git submodule update --init --recursive --jobs 4 || true
+          git clone --depth 1 https://github.com/KhronosGroup/glslang.git MobileGlues-cpp/3rdparty/glslang
+          git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git MobileGlues-cpp/3rdparty/SPIRV-Cross
+          test -f MobileGlues-cpp/3rdparty/glslang/CMakeLists.txt
+          test -f MobileGlues-cpp/3rdparty/SPIRV-Cross/CMakeLists.txt
 
       - name: Locate Android SDK tools
         run: |
